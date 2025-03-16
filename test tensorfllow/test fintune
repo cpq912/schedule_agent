@@ -1,0 +1,205 @@
+import torch
+
+from transformers import BitsAndBytesConfig
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,#在计算的时候需要还原到16bit
+    bnb_4bit_use_double_quant=True
+)
+
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, BitsAndBytesConfig
+
+model_name = "deepseek-ai/deepseek-llm-7b-base"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, quantization_config=bnb_config,device_map="auto")
+model.generation_config = GenerationConfig.from_pretrained(model_name)
+model.generation_config.pad_token_id = model.generation_config.eos_token_id# 由于批处理需要padding，然后可以用eos， end of speech作为pading
+
+text = "曲匹地尔片的用法用量"
+inputs = tokenizer(text, return_tensors="pt")
+outputs = model.generate(**inputs.to(model.device), max_new_tokens=100)
+
+result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+print(result)
+
+
+def prepare_dataset(data_path):
+    """逐行加载JSON数据，跳过错误行"""
+    df_data = []
+    valid_rows = 0
+
+    with open(data_path, 'r', encoding='utf-8') as f:
+        # 逐行读取
+        for line in f:
+            if valid_rows >= 1000:  # 限制加载100000行
+                break
+
+            try:
+                # 尝试解析每一行JSON
+                item = json.loads(line.strip())
+
+                if 'instruction' in item and 'output' in item:
+                    if item.get('input'):
+                        prompt = f"指令: {item['instruction']}\n输入: {item['input']}\n输出: "
+                    else:
+                        prompt = f"指令: {item['instruction']}\n输出: "
+
+                    df_data.append({
+                        "prompt": prompt,
+                        "response": item['output'],
+                        "text": prompt + item['output']
+                    })
+                    valid_rows += 1
+
+                    if valid_rows % 10000 == 0:  # 每处理10000行打印进度
+                        print(f"已处理 {valid_rows} 行有效数据")
+
+            except (json.JSONDecodeError, UnicodeError, KeyError):
+                # 跳过解析错误的行
+                continue
+
+    print(f"总共成功加载 {valid_rows} 行有效数据")
+    return pd.DataFrame(df_data)
+
+
+
+
+def tokenize_function(examples):
+    """将文本标记化为模型输入"""
+    # 确保最大长度合理且启用截断和填充
+    tokenized = tokenizer(
+        examples["text"],
+        padding='max_length',
+        truncation=True,
+        max_length=512,
+        return_tensors=None  # 重要：不要在这里转换为张量
+    )
+    
+    # 创建标签
+    tokenized["labels"] = tokenized["input_ids"].copy()
+    
+    return tokenized
+
+# 3. 配置LoRA
+def setup_peft_model(model):
+    """配置并返回PEFT模型"""
+    # 确保模型不可以进行梯度计算，减少显存
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # 配置LoRA
+
+
+    # peft_config = LoraConfig(
+    #     task_type=TaskType.CAUSAL_LM,
+    #     inference_mode=False,
+    #     r=8,  # LoRA的秩
+    #     lora_alpha=32,
+    #     lora_dropout=0.1,
+    #     # 根据您的模型架构调整目标模块
+    #     target_modules=['q_proj', 'v_proj', 'k_proj', 'o_proj']
+    # )
+    peft_config = LoraConfig(
+    r=8,                               # Reduce rank
+    lora_alpha=16,
+    target_modules=["q_proj", "v_proj"],#这是需要进行lora更改的部分参数
+    bias="none",
+    task_type="CAUSAL_LM",
+    inference_mode=False,
+    lora_dropout=0.05
+)
+
+    # 准备模型进行训练
+    model = prepare_model_for_kbit_training(model)
+    model = get_peft_model(model, peft_config)
+
+    # 打印可训练参数比例
+    model.print_trainable_parameters()
+
+    return model
+
+# 4. 训练设置
+def train_model(model, train_dataset, output_dir="./peft_model"):
+    """设置训练参数并训练模型"""
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=4,
+        num_train_epochs=1,
+        learning_rate=2e-4,
+        fp16=True,
+        logging_steps=100,
+        save_steps=500,
+        save_total_limit=3,
+        remove_unused_columns=False,
+    )
+
+    # 数据整理器
+    data_collator = DataCollatorForSeq2Seq(
+        tokenizer,
+        model=model,
+        label_pad_token_id=-100,
+        pad_to_multiple_of=8
+    )
+
+    # 初始化训练器
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        data_collator=data_collator,
+    )
+
+    # 开始训练
+    trainer.train()
+
+    # 保存模型
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+
+    return model
+
+
+import os
+import torch
+import json
+import pandas as pd
+from datasets import Dataset
+from transformers import (
+    Trainer,
+    TrainingArguments,
+    DataCollatorForSeq2Seq
+)
+from peft import (
+    get_peft_model,
+    LoraConfig,
+    TaskType,
+    prepare_model_for_kbit_training
+)
+# 修改前（相对路径不可靠）
+data_path = "./train.json"
+
+# 修改后（推荐使用绝对路径）
+data_path = "d:/projects/agent/data/train.json"  # 确保文件实际存在
+output_dir = "./peft_model"
+
+    # 准备数据集
+df = prepare_dataset(data_path)
+
+dataset = Dataset.from_pandas(df)
+# 使用方式
+tokenized_dataset = dataset.map(
+    tokenize_function,
+    batched=True,
+    remove_columns=dataset.column_names  # 移除原始列
+)
+
+
+
+
+peft_model = setup_peft_model(model)
+
+# 训练模型
+trained_model = train_model(peft_model, tokenized_dataset, output_dir)

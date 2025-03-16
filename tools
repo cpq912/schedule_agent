@@ -1,0 +1,121 @@
+
+
+
+#check Conflict 
+from datetime import datetime
+def check_time_conflicts(list_a, list_b):
+    conflicts = []
+    
+    for event_a in list_a:
+        start_a = event_a["start_time"]
+        end_a = event_a["end_time"]
+        
+        for event_b in list_b:
+            start_b = event_b["start_time"]
+            end_b = event_b["end_time"]
+
+            # Check for time overlap
+            if (start_a < end_b or  start_b<end_a):
+                conflicts.append({
+                    "event_a_id": event_a["event_id"],
+                    "event_b_id": event_b["event_id"],
+                    "conflict_period": {
+                        "start": max(start_a, start_b),
+                        "end": min(end_a, end_b)
+                    }
+                })
+    
+    return conflicts
+
+# add a name to the response of llm 
+def type_agent(agenttype,message,llm):
+    response = llm.invoke(message)
+    return f"[{agenttype}]: {response.content}"
+
+
+
+#receive a check json, and return the json with status
+    # "event_id": "random_alphanumeric", 
+    # "start_time": "YYYY-MM-DD HH:MM", (required)
+    # "end_time": "YYYY-MM-DD HH:MM",   
+    # "category": "Work/Personal/Health",
+    # "description": "user input",
+    # "priority": "1-5"
+def get_add_event(list_a):
+    stats = []
+    seen_dates = set()
+    
+    for event in list_a:
+        date_str = datetime.strptime(event['start_time'], "%Y-%m-%d %H:%M").strftime("%Y%m%d")
+        
+        if date_str not in seen_dates:
+            seen_dates.add(date_str)
+            stats.append({
+                "search_date": date_str
+            })
+    
+    return stats
+
+#this func should use the require info to retrieve event from the database
+def get_event(list_a):
+    # get all the dates from list_a
+    dates = [datetime.strptime(event['start_time'], "%Y-%m-%d %H:%M") for event in list_a]
+    # retrieve these dates in database, should be in the same json format
+    
+
+    return event_list
+
+
+#this func should use the require info to write event to the database
+def write_event():
+
+
+def delete_event():
+
+
+
+
+#extract part from the llm response
+def extract_message(response, field):
+    # Find the grounded message between quotes
+    if field in response:
+        # Split by grounded message: and get the part after it
+        message_part = response.split("grounded message:")[1].strip()
+        # Extract content between quotes
+        try:
+            message = message_part.split('"')[1]
+            return message
+        except IndexError:
+            return None
+    return None
+
+#func that return response to user
+def response():
+
+#func that check new or udpated to do list in memory
+def get_todo_update():
+
+#func that give the next review date of todolist,give todo id if not available,and mapping  between todo to eventid
+def next_review():
+
+#structure of the todo data
+# {
+# 'todo_id':'random'
+# 'event_id_in':[]
+# 'event_id_out':[]#these are the passed event
+# 'review_date':'2025-03-04' # next date that it needs to be updated, usully every saturday
+# 'priority':'1-5'
+# 'description':'Every 2 days, timeslot 16:00-17:00 (adjusted dynamically)'
+# 'category':''
+# 'status':''
+
+# }
+
+
+#func that return the recent month event since current date    
+def get_recent_month():
+
+#this function will use period event info and extend to multiple json format
+def extend():
+
+

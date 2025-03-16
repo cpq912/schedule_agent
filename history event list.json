@@ -1,0 +1,76 @@
+
+
+
+[{
+  "event_id": "ed32d42",
+  "start_time": "2025-03-03 09:00",
+  "end_time": "2025-03-03 10:30",
+  "category": "Work",
+  "description": "Team meeting to outline Q2 project milestones",
+  "priority": "2"
+}
+,
+{ "event_id": "et32d42",
+  "start_time": "2025-03-04 07:00",
+  "end_time": "2025-03-04 07:45",
+  "category": "Health",
+  "description": "45-minute flow yoga for flexibility and stress relief",
+  "priority": "3"
+}
+,
+{   "event_id": "ed32d41",
+    "start_time": "2025-03-05 14:00",
+    "end_time": "2025-03-05 16:30",
+    "category": "Work",
+    "description": "Pitch new marketing strategy to major client (Acme Corp)",
+    "priority": "1"
+  }
+,
+{   "event_id": "ed32d00",
+    "start_time": "2025-03-07 11:00",
+    "end_time": "2025-03-07 12:30",
+    "category": "Health",
+    "description": "Routine physical exam at City Health Clinic",
+    "priority": "2"
+  }
+,
+{   "event_id": "ed35d42",
+    "start_time": "2025-03-08 10:00",
+    "end_time": "2025-03-08 11:15",
+    "category": "Personal",
+    "description": "Stock up on essentials for the week",
+    "priority": "5"
+  }
+,
+{   "event_id": "ed32q42",
+    "start_time": "2025-03-05 16:00",
+    "end_time": "2025-03-05 17:30",
+    "category": "Work",
+    "description": "Creative session for new product ideation",
+    "priority": "3"
+  }
+,
+{   "event_id": "eb32d42",
+    "start_time": "2025-03-09 18:00",
+    "end_time": "2025-03-09 19:15",
+    "category": "Health",
+    "description": "15-mile bike ride along Riverside Trail",
+    "priority": "4"
+  }
+,
+{   "event_id": "ed12d42",
+    "start_time": "2025-03-08 12:00",
+    "end_time": "2025-03-08 14:00",
+    "category": "Personal",
+    "description": "Monthly family gathering at Sunny Café",
+    "priority": "2"
+  }
+,
+{   "event_id": "xd32d42",
+    "start_time": "2025-03-10 13:00",
+    "end_time": "2025-03-10 15:00",
+    "category": "Work",
+    "description": "Analyze Q1 financial reports with accounting team",
+    "priority": "1"
+  }
+]
