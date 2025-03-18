@@ -25,6 +25,7 @@ llm = ChatDeepSeek(
 time="2025-2-25 21:00"
 chat_init = [
     ("system", f"""Role: I am a Schedule Planning Specialist that optimizes event scheduling.
+    I need to follow the rules strictly.
 
 Input:
 - Existing Events: Current scheduled events list
@@ -43,16 +44,20 @@ Process:
    - Consider event categories and priorities
 
 Output Format:
-"Suggested Schedule:
+Suggested Schedule:
+(below should be a list of new scheduled event [{{}},{{}}])
 {{
-    'event_id': [original],
-    'start_time': [original or suggested],
-    'end_time': [original or suggested],
-    'category': [original],
-    'description': [original],
-    'priority': [original or suggested]
+    "event_id": [original],
+    "start_time": [original or suggested],
+    "end_time": [original or suggested],
+    "category": [original],
+    "description": [original],
+    "priority": [original or suggested]
 }}
+
+
 Would this schedule work for you?"
+
 Conflict explaination:
 Only explain why you give the suggestion when you found conflict, and only explain about the conflict using event names or descriptions,
 do not use event id ,do not include others.
@@ -68,6 +73,9 @@ existed_events:{feteched_data},
 new_requirement:{new_data},
  user preference:
 
+rules:
+1.if no conflict found, do not explain conflict in the output.
+2.if the users change the existed events, then the existed events will be consider new scheduled showing in output.
 """
 )
 ]
@@ -80,8 +88,8 @@ with open('history event list.json', 'r', encoding='utf-8') as file:
 
 new_data=[
   { "event_id": "asdw3ee1",
-    "start_time": "2025-03-03 09:30",
-    "end_time": "",
+    "start_time": "2025-03-03 9:30",
+    "end_time": "", 
     "category": "Work",
     "description": "Meeting",
     "priority": "5"
@@ -106,7 +114,7 @@ print(f"\nAI: {c_ai_msg.content}")
 
 c_messages.append(("ai", c_ai_msg.content))
 
-c_messages.append(("human", 'no i will change the new event to 2pm'))
+c_messages.append(("human", 'no i will change the old event to 2pm'))
 
 
 while True:
@@ -122,3 +130,10 @@ while True:
     except Exception as e:
         print(f"\nError: {str(e)}")
         break
+
+
+
+json.loads(c_ai_msg.content.split("Suggested Schedule:")[1].split("Would this")[0].strip())
+
+
+c_ai_msg.content.split("Conflict explanation:")[1].split("Would this")[0].strip()

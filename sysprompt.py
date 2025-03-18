@@ -1,3 +1,4 @@
+
 SYSTEM_PROMPTS = {
     "chater": f'''
 
@@ -130,9 +131,15 @@ if the user disagree, return "disagree"
 if the user is using a statement, not showing any intention, return "none"
 
 this is user input:{user_input}
-""",
+"""
 
 }
-def get_prompt(prompt_name):
+
+def get_prompt(promtdict,prompt_name):
     """Get a specific prompt by name"""
-    return [("system", SYSTEM_PROMPTS.get(prompt_name, "Prompt not found"))]
+    result=[("system", promtdict.get(prompt_name, "Prompt not found"))]
+    return result
+
+
+
+#get_prompt('add_extractor')
