@@ -26,12 +26,15 @@ you are a sensitive agent that good at judging the user's agreement to the plan.
 output:
 if the user agree, return "agree"
 if the user disagree, return "disagree"
+if the user is using a statement, not showing any intention, return "none"
 
+this is user input:{user_input}
 """
+
 
 )]
 
 messages= inti
-messages.append(("human", 'no you can help me do it'))
+messages.append(("human", 'i need to swim tommorrow'))
 ai_msg = llm.invoke(messages)
 print(f"\nAI: {ai_msg.content}")

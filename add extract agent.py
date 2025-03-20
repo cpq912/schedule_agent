@@ -79,7 +79,7 @@ Events: {{
 
 
 c_messages=chat_init
-c_messages.append(("human", 'no you can help me do it'))
+c_messages.append(("human", 'i will swim tommorrow at 10:00 for 2 hours, priority 3, healthy'))
 c_ai_msg = llm.invoke(c_messages)
 print(f"\nAI: {c_ai_msg.content}")
 
@@ -101,3 +101,28 @@ while True:
     except Exception as e:
         print(f"\nError: {str(e)}")
         break
+
+
+def extract_message(response, field):
+    # Find the grounded message between quotes
+    if field in response:
+        # Split by grounded message: and get the part after it
+        message_part = response.split(field)[1].strip()
+        # Extract content between quotes
+        try:
+            message = message_part.split('"')[1]
+            return message
+        except IndexError:
+            return None
+    return None
+
+extract_message(c_ai_msg.content,"Collected events:")
+
+
+#json.loads(c_ai_msg.content.split("```json")[1].strip().split("```")[0].strip())
+
+
+#"message" in c_ai_msg.content
+
+
+c_ai_msg.content.split("Collected events:")[1].strip()

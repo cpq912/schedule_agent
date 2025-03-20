@@ -191,13 +191,17 @@ def write_event(list_event):
     db = EventDatabase()
     for event in list_event:
         if db.get_event_by_id(event['event_id']):
-            delete_by_id(event['event_id'])
+            db.delete_by_id(event['event_id'])
         db.add_event(event)
 
 
 
 
-def delete_event():
+def delete_event(list_event):
+    db = EventDatabase()
+    for event in list_event:
+        if db.get_event_by_id(event['event_id']):
+            db.delete_by_id(event['event_id'])
 
 def from_frontend():
     return input("please enter: ")
@@ -208,23 +212,23 @@ def extract_message(response, field):
     # Find the grounded message between quotes
     if field in response:
         # Split by grounded message: and get the part after it
-        message_part = response.split("grounded message:")[1].strip()
+        message_part = response.lower().split("grounded message:")[1].strip()
         # Extract content between quotes
         try:
-            message = message_part.split('"')[1]
+            message = message_part.split('collected events:')[0]
             return message
         except IndexError:
             return None
     return None
 
 #func that return response to user
-def response():
+# def response():
 
 #func that check new or udpated to do list in memory
-def get_todo_update():
+# def get_todo_update():
 
 #func that give the next review date of todolist,give todo id if not available,and mapping  between todo to eventid
-def next_review():
+# def next_review():
 
 #structure of the todo data
 # {
@@ -241,9 +245,9 @@ def next_review():
 
 
 #func that return the recent month event since current date    
-def get_recent_month():
+# def get_recent_month():
 
 #this function will use period event info and extend to multiple json format
-def extend():
+# def extend():
 
 

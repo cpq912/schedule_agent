@@ -71,7 +71,7 @@ plan: {{final schedule details}}
 Your input is listed here:
 existed_events:{feteched_data}, 
 new_requirement:{new_data},
- user preference:
+ user preference:{user_input}
 
 rules:
 1.if no conflict found, do not explain conflict in the output.
@@ -89,7 +89,7 @@ with open('history event list.json', 'r', encoding='utf-8') as file:
 new_data=[
   { "event_id": "asdw3ee1",
     "start_time": "2025-03-03 9:30",
-    "end_time": "", 
+    "end_time": "2025-03-03 10:30", 
     "category": "Work",
     "description": "Meeting",
     "priority": "5"

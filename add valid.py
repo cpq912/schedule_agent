@@ -175,9 +175,10 @@ Duration: Assign based on event type (e.g., workout = 60 mins, meeting = 30 mins
 Priority: Default to medium unless stated (e.g., “urgent” = high).
 The time slot could be different for each occurence if needed.
 
-User preference:
+User preference(you must follow this preference):
 Avoid Early Morning Sports: No intense activities (gym, swim) before 9:00 AM.
 Do not plan two sports event in the same day.
+{{return_feedback}}
 
 Conflict Resolution
 If no slots fit, propose alternatives (e.g., shorten duration, adjust days) with explanations.
