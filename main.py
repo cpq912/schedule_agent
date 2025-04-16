@@ -62,7 +62,7 @@ def main():
     global user_input
     global new_data
     time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    user_input=input()
+ #   user_input=input()
     #start dialougue
     floor_messages=[]
     #user input
@@ -78,8 +78,15 @@ def main():
     action = response.lower().split("user needs:")[1].strip()
 
     #temporary add period
-    if user_input=="period":
-       action="period"
+#    if user_input=="period":
+    user_id='exampleid123'
+    action="add"
+
+    #get preference
+    
+    rf_db=prefereceDatabase()
+    #list of preference 
+    preference_msg = list(rf_db.get_by_id(user_id))[-1]['content']
 
     #add
     if action=='add':
@@ -88,7 +95,7 @@ def main():
         add_msg.append(("user",user_input))
         response = type_agent("add_extractor",add_msg,llm)
         add_msg.append(("assistant",response))
-        if "turns: 1" in response and "Status: completed" in  response:
+        if "turns:1" in response and "Status:completed" in  response:
             new_data=json.loads(response.lower().split("collected events:")[1].strip())
             feteched_data =get_add_event(new_data)
         # new_data =json.loads(response.split("```json")[1].strip().split("```")[0].strip())
@@ -234,15 +241,18 @@ def main():
 
 
             final_schedule=json.loads(response.lower().split("suggested schedule:")[1].split("----separate line----")[0].strip())
-            cancel_events = json.loads(response.lower().split("cancel list:")[1].split("would this")[0].strip())
-            delete_event(cancel_events)
+            try:       
+                cancel_events = json.loads(response.lower().split("cancel list:")[1].split("would this")[0].strip())
+                delete_event(cancel_events)
+            except:
+                pass
             write_event(final_schedule)#need to delete the event in the new event listed first
 
     #add all messages to floor at last
     #the first one is the system prompt, do not add to floor
-    floor_messages.append(add_msg[1:])
-    floor_messages.append(addplan_msg[1:])
-    return "new event has been added"
+        floor_messages.append(add_msg[1:])
+        floor_messages.append(addplan_msg[1:])
+     
 
 
 
@@ -261,10 +271,14 @@ def main():
     if action=='period':
     #front end should return a dict{new:,delete:}    
 
-        new_todo=get_new_todo()
+        new_todo=get_new_todo(['I have project dealine next month'])
         # get existed event of recent month
+
         cur_date= time+"  "+ datetime.strptime(time, "%Y-%m-%d %H:%M").strftime("%A")
+        cur_date= "20250301 19:00 Saturday"
+
         feteched_data =get_recent_events(time,30)
+        global return_feedback
         return_feedback=None # intitial has no feedback
         for item in new_todo:
             format_input=f'''
@@ -272,7 +286,7 @@ def main():
             "user demand":{item['content']}
             '''
             todo_planner=todo_planner_prompt(cur_date)
-
+            todo_planner.append(('user',format_input))
             confirm_stat=False
             while not confirm_stat:
                 response = type_agent("todo_planner",todo_planner,llm2)
@@ -291,6 +305,8 @@ def main():
             event_list=get_extend(attribute,time_slot)
             #write to event list
             write_event(event_list)
+            floor_messages.append(todo_planner[1:])
+
             #update the review time of todo
             item['origin_plan']=response.lower().split("recurring time slot:")[1].split("adjusted time slot details for each recurred event:")[0].strip()
             last_event_time = datetime.strptime(event_list[-1]['end_time'], "%Y-%m-%d %H:%M")
@@ -358,6 +374,10 @@ def main():
         check_msg.append(("assistant",response))
 
 
+    #when conversion end, log the dialogue
+    db=dialogueDatabase()
+    db.add_dialogue(floor_messages, user_id)
+    return 'conversation end'
 
 #end of dialogue, when no one speak for 5 mins
 
@@ -418,42 +438,47 @@ def add_extractor_prompt():
     return [f"""
 Role: I am an event information collector. I will:
 
-1. Extract event details from user message in this format:
+1. Extract event details from user message in this event format:
 when implicite time give(e.g. tommorow), you may use current time{time} to infer.
 Do not hallucinate if the information is not given in users response.
-Auto-infer category (Work/Personal/Health).
+If information is not provided in user message, the corresponding item should not existed.
+Auto-infer and fill category item only (Work/Personal/Health).
 You should auto gen an eventid over 20 digits that impossible to repeat
 {{
     "event_id": "random_alphanumeric", 
-    "start_time": "YYYY-MM-DD HH:MM", (required)
+    "start_time": "YYYY-MM-DD HH:MM", 
     "end_time": "YYYY-MM-DD HH:MM",   
     "category": "Work/Personal/Health",
     "description": "user input",
     "priority": "1-5"
 }}
 
-2. 
-grounded message: "your grounded message"
-when fields are missing from user statement (fields include start_time,end_time,category,description, priority):
-- First Response: respond with "Would you provide more information about [list missing fields]?"
-- Second Response: "Since you haven't given all info, I shall try it based on your preference"
-
-When all fields provided: "Ok, I shall help you arrange it"
-
-If any field is missing, you may ground "would you provide more information about (missing fileds) ?" Do not infer.
-If  all field is provided, you may ground "ok i shall help you arrange it ". Do not infer.
-If after first response the fields are still missing , you may ground "since you haven't give all info, i shall try it based on your preference " .In this case, the status should be partially completed.
+2.Missing field identify:
+Compare your extracted information json to the event format (fields include start_time,end_time,category,description, priority), identify which fields are missing
 
 
-3. Output format:
+3. Grounding process:
+If identify missing information,you need to aks user to provided it by: "Would you provide more information about [list missing fields]?"
+
+After user reply,use user reply to update the extracted information, then decide :
+(1)if every filed is complete, reply :"Ok, I shall help you arrange it"
+(2)if every filed is not complete, reply "Since you haven't given all info, I shall try it based on your preference"
+
+Rule:
+1.Only update the extracted information with the information user provided(except category could be infer by you ), do not infer and add to the field.
+
+
+4. Output format:
 1.turns:1-2(this is showing the number of turns that you are anwsering)
-2.Status: completed/partially completed
-3.grounded message: "your grounded message"
-4.Collected events: list of newly scheduled events [{{}},{{}}]
+2.Reasoning:(the reason process how you get the final collected events)
+3.Status: completed/partially completed
+4.grounded message: "your grounded message"
+5.Collected events: list of newly scheduled events [{{}},{{}}]
 
 output rules:
 1.YOU MUST STRICTLY FOLLOW THE OUTPUT FORMAT
 2.DO NOT ADD WORDS BEFORE OR AFTER THE 4 OUPUTPARTS
+3.Do not add space after ":", (turns:1 is valid)(turns: 1 is invalid)
 
 Valid format example:
 turns:1
@@ -464,7 +489,7 @@ Collected events:[{{"event_id":"123456789012345678901","start_time":"2024-02-26 
 invalid format example:
 Collected events:[{{"event_id":"123456789012345678901","start_time":"2024-02-26 14:00","end_time":"2024-02-26 15:00","description":"meeting","priority":"5"}}] tell me if you need more help
 
-4.Rules:
+5.Rules:
 1.At most you can response two times, first time the turns=1, second time the turns=2
 2.After first response, no matter user provide more information or not, you should not repeat ask for more information.
 
@@ -491,6 +516,10 @@ Process:
    - Follow scheduling best practices
    - Consider event categories and priorities
 
+User preference(you must follow this preference):
+Avoid Early Morning Sports: No intense activities (gym, swim) before 9:00 AM.
+Do not plan two sports event in the same day.
+{preference_msg}
 
 Output Format:
 YOU MUST FOLLOW THIS EXACT FORMAT WITHOUT ANY DEVIATION:
@@ -512,16 +541,18 @@ Suggested Schedule:
 Conflict explanation: (only include if conflicts exist)
 Only explain why you give the suggestion when you found conflict, and only explain about the conflict using event names or descriptions,
 do not use event id ,do not include others.
-
+----separate line----
 Cancel list: (only include if user want to cancel events)
 same format as  Suggested Schedule
-
+----separate line----
 Would this schedule work for you?
 
 Your input is listed here:
 existed_events:{feteched_data}, 
 new_requirement:{new_data},
  user preference:{user_input}
+
+
 
 rules:
 1.if no conflict found, do not explain conflict in the output.
@@ -534,7 +565,7 @@ rules:
 
 
 def todo_planner_prompt(cur_date):
-    return [f'''
+    return [("system",f'''
 Role: 
 You are an AI schedule agent expert in intelligently inserting recurring events into a user's 
 calendar through holistic time optimization and human-centric reasoning.
@@ -579,12 +610,15 @@ Exercise: 9:00 AM – 10:00 AM and 16:00PM - 20:00PM.
 Meetings: 9:00 AM – 5:00 PM.
 Auto-Assign Attributes
 Duration: Assign based on event type (e.g., workout = 60 mins, meeting = 30 mins).
+Split a very long duration if is not explicitly a continuous event, the split ones could flexibly select days and time slot trying to balance.
 Priority: Default to medium unless stated (e.g., “urgent” = high).
 The time slot could be different for each occurence if needed.
+
 
 User preference(you must follow this preference):
 Avoid Early Morning Sports: No intense activities (gym, swim) before 9:00 AM.
 Do not plan two sports event in the same day.
+{preference_msg}
 {return_feedback}
 
 Conflict Resolution
@@ -592,16 +626,19 @@ If no slots fit, propose alternatives (e.g., shorten duration, adjust days) with
 
 **In the output:
 you need to show the final proposed schedule after the dynamic adjustments, strickly follow this format:
+The format for timeslot should be "HH:MM-HH:MM" (e.g., "15:00-16:00")
+ENSURE YOU USE THE SAME LINE TITLES AS THE EXAMPLE BELOW.(start date,recurring time slot,adjusted time slot details for each recurred event)
+ALSO FOLLOW THE FOTMAT EXACTLY DESCRIBED BELOW.
+
 event attribute:priority:1-5,category:description:
 start date:date
 recurring time slot:period description(e.g. everyday), timeslot (e.g. 15:00pm-16:00pm)
 adjusted time slot details for each recurred event : a list [date, time slot]
-
-
 current date : {cur_date}
 
+
 '''
-    ]
+   ) ]
 
 
 

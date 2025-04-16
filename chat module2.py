@@ -75,10 +75,20 @@ My task is to identify if you want to:
 2. Check existing schedule
 3. Modify an event
 4. delete an event
- 
+5. Add a periodic event
+
+The period phrase could be like this (could be more than this):
+"Every week" 
+"Every 10 days" 
+"Twice a month" 
+"every Mon/Wed/Fri"
+
+
+
 Output:
-I will respond with "User needs: (add/check/modify/delete)" followed by relevant questions.
+I will respond with "User needs: (add/check/modify/delete/period)".
 no other words are allowed
+Strictly follow the following format:
 
 Examples:
 User: "I need to schedule a meeting tomorrow"
@@ -89,6 +99,9 @@ Response: "User needs: check"
 
 User: "Can you change the time of my dentist appointment?"
 Response: "User needs: modify"
+
+User: "I want to study for 8 hours every week"
+Response: "User needs: period"
 ''')
 ]
 
@@ -108,6 +121,31 @@ print(f"\nAI: {c_ai_msg}")
 c_messages.append(("ai", ai_msg.content))
 
 messages.append(("ai", 'Downstream agent: the date you check has no event'))
+
+
+
+#test qwen performance
+import os
+from openai import OpenAI
+import json
+client = OpenAI(
+    # If environment variables are not configured, replace the following line with: api_key="sk-xxx",
+    api_key="sk-d0d414ae60c04b569db14cd502eeb8bc", 
+    base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen2.5-7b-instruct", # This example uses qwen-plus. You can change the model name as needed. Model list: https://www.alibabacloud.com/help/en/model-studio/getting-started/models
+    messages=[
+        {'role': 'system', 'content': chat_init[0][1]},
+        {'role': 'user', 'content': 'i need to workout 3 times a week'}],
+)
+    
+#print(completion.model_dump_json()['messages']['content'])
+print(completion.choices[0].message.content)
+
+
+
 
 
 while True:

@@ -18,7 +18,7 @@ llm2 = ChatDeepSeek(
     api_key="sk-dba351629c004c41b3c4c99c9e806db4"
     # other params...
 )
-
+import json
 
 with open('history event list.json', 'r', encoding='utf-8') as file:
     feteched_data = json.load(file)
@@ -26,7 +26,7 @@ with open('history event list.json', 'r', encoding='utf-8') as file:
 
 
 init = [
-("system",'''
+("system",f'''
 Role: 
 You are an AI schedule agent expert in intelligently inserting recurring events into a user's 
 calendar through holistic time optimization and human-centric reasoning.
@@ -37,6 +37,7 @@ Avoids conflicts with existing events.
 Follows natural activity sequences (e.g., n o sports after sports, buffer before critical meetings).
 Respects time preferences (e.g., no early-morning sports).
 Aligns with event duration norms (e.g., workouts = 45–90 mins).
+Schecule for the next 30 days since the start date.
 
 Rules:
 Start Date Calculation
@@ -76,14 +77,14 @@ The time slot could be different for each occurence if needed.
 User preference(you must follow this preference):
 Avoid Early Morning Sports: No intense activities (gym, swim) before 9:00 AM.
 Do not plan two sports event in the same day.
-{{return_feedback}}
+{return_feedback}
 
 Conflict Resolution
 If no slots fit, propose alternatives (e.g., shorten duration, adjust days) with explanations.
 
 **In the output:
 you need to show the final proposed schedule after the dynamic adjustments, strickly follow this format:
-event attribute:priority:1-5,category:description:
+event attribute:priority:1-5,category:,description:
 start date:date
 recurring time slot:period description(e.g. everyday), timeslot (e.g. 15:00pm-16:00pm)
 adjusted time slot details for each recurred event : a list [date, time slot]
@@ -95,17 +96,28 @@ current date :2025-03-01 09:30(Saturday)
 ]
 
 
+
+
+new_todo=[
+{"id":"sdffasf12","content":"do gym three times a week","stat":"unprocessed"}]
+
 format_input=f'''
 "existed":{feteched_data},
-"user demand":“the user want to do gyms every two days starting from next week”
+"user demand":{new_todo[0]['content']}
 
 '''
+return_feedback=None
+return_feedback="i need to work on weekdays, spend two times in weekdays in the evening, and one time in weekend afternoon"
+
 messages=init
 messages.append(("user", format_input))  # Convert dict to JSON string
 
+messages.append(("assistant", ai_msg.content)) 
+
+messages.append(("user", return_feedback)) 
 ai_msg = llm2.invoke(messages)
 
-
+ai_msg.content.lower().split("adjusted time slot details for each recurred event:")[1].split("current date:")[0].strip()
 
 print(f"\nAI: {ai_msg.content}")
 
